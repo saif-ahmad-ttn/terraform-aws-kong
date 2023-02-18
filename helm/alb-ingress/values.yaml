@@ -1,0 +1,26 @@
+IngressName: myapp-helm-ingress
+apiVersion: networking.k8s.io/v1
+ingress:
+  enabled: true
+  # className: nginx
+  className:
+  annotations: 
+      "kubernetes.io/ingress.class"                  : "alb"
+      "alb.ingress.kubernetes.io/target-type"        : "ip"
+      "alb.ingress.kubernetes.io/scheme"             : "internet-facing"
+      "alb.ingress.kubernetes.io/load-balancer-name" : "test-helm-ingress-alb-1"
+      "alb.ingress.kubernetes.io/healthcheck-path"   : "/health"
+      "alb.ingress.kubernetes.io/listen-ports"       : "[{\"HTTP\": 80}]"
+      "alb.ingress.kubernetes.io/subnets"            : "subnet-0257e8262a7017948,subnet-062a9cb5ea10455da,subnet-06b6a7e3c22de35ca"
+    
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: 
+      paths:
+        - path: /
+          appName: svc-kong1
+          httpPort: 80
+          pathType: Prefix
+
+  tls: []

@@ -1,0 +1,63 @@
+deployment:
+  repositoryUrl: pantsel/konga:0.14.9
+  replicaCount: 1
+  Annotations:
+    pod:
+      iam.amazonaws.com/role: arn:aws:iam::281176377529:role/non-production-kong-role
+      prometheus.io/scrape: 'true'
+      prometheus.io/port: '8001'
+      prometheus.io/path: /metrics
+  containers:
+
+    - name: konga
+      secrets:
+        enabled: true
+      ports:
+      - containerPort: 1337
+        protocol: TCP
+
+      env:
+      - name: DB_ADAPTER
+        value: postgres
+      - name: DB_HOST
+        value: "postgres"
+      - name: DB_USER
+        value: "postgres"
+      - name: DB_PASSWORD
+        value: "b9909FTArBOsPoOlYERWC8QMex9KrIEXll"
+      - name: DB_DATABASE
+        value: konga_db
+      - name: DB_PORT
+        value: "5432"
+      - name: DB_PG_SCHEMA
+        value: "public"
+      - name: TOKEN_SECRET
+        value: secretstring
+      resources:
+        limits:
+          memory: 1800Mi
+          cpu: 1000m
+        requests:
+          memory: 1800Mi
+          cpu: 1000m
+      healthcheck:
+        path: /register
+        port: 1337
+        initialDelaySeconds: 10
+        timeoutSeconds: 10
+        failureThreshold: 7
+      
+
+
+ports:
+  - name: "www"
+    port: 80
+    targetPort: 1337
+
+
+hpa:
+  enabled: disabled
+  minReplicas: 1
+  maxReplicas: 1
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 70

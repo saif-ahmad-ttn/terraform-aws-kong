@@ -1,0 +1,122 @@
+deployment:
+  repositoryUrl: kong:latest
+  replicaCount: 1
+  Annotations:
+    pod:
+      iam.amazonaws.com/role: arn:aws:iam::281176377529:role/non-production-kong-role
+      prometheus.io/scrape: 'true'
+      prometheus.io/port: '8001'
+      prometheus.io/path: /metrics
+  containers:
+
+    - name: kong
+      secrets:
+        enabled: true
+      ports:
+      - containerPort: 8000
+        protocol: TCP
+      - containerPort: 8443
+        protocol: TCP
+      - containerPort: 8001
+        protocol: TCP
+      - containerPort: 7946
+        protocol: UDP
+      - containerPort: 7946
+        protocol: TCP
+      volumeMounts:
+      - mountPath: /usr/local/kong/logs
+        name: kong-logs
+      - mountPath: /usr/local/share/lua/5.1/kong/templates/nginx_kong.lua
+        subPath: nginx_kong.lua
+        name: kong-config
+
+      env:
+      - name: KONG_DATABASE
+        value: "postgres"
+      - name: KONG_PG_HOST
+        value: "localhost"
+      # - name: KONG_PG_USER
+      #   value: "root" 
+      # - name: KONG_PG_PASSWORD
+      #   value: "admin123"
+      - name: KONG_ADMIN_LISTEN
+        value: 0.0.0.0:8001
+      - name: KONG_ADMIN_LISTEN_SSL
+        value: 0.0.0.0:8444
+      - name: KONG_TRUSTED_IPS
+        value: 0.0.0.0/0,::/0
+      - name: KONG_PG_DATABASE
+        value: kong_db
+      - name: ENV_NAME
+        value: ""
+      - name: MODULE
+        value: kong
+      - name: UPSTREAM_CONNECT_TIMEOUT
+        value: "60000000"
+      - name: UPSTREAM_SEND_TIMEOUT
+        value: "60000000"
+      - name: UPSTREAM_READ_TIMEOUT
+        value: "60000000"
+      - name: upstream_connect_timeout
+        value: "60000000"
+      - name: upstream_send_timeout
+        value: "60000000"
+      - name: upstream_read_timeout
+        value: "60000000"
+      - name: TZ
+        value: "Asia/Kolkata"
+      resources:
+        limits:
+          memory: 1800Mi
+          cpu: 1000m
+        requests:
+          memory: 1800Mi
+          cpu: 1000m
+      healthcheck:
+        enabled: true
+        exec:
+          command:
+          - kong
+          - health
+        initialDelaySeconds: 10
+        timeoutSeconds: 10
+        failureThreshold: 7
+      lifecycle:
+        preStop:
+          exec:
+            command:
+            - kong
+            - quit
+  volumes:
+    - name: kong-logs
+      hostPath:
+        path: /opt/logs/kong-ta-uat-logs
+    - name: kong-config
+      configMap:
+        name: kong-config
+
+
+
+ports:
+  - name: "www"
+    port: 8001
+    targetPort: 8001
+  - name: "www1"
+    port: 80
+    targetPort: 8000
+  - name: "https"
+    port: 8080
+    targetPort: 8080
+
+secrets:
+  postgres_user: cm9vdA==
+  postgres_password: YWRtaW4xMjM=
+  KONG_PG_USER: cm9vdA==
+  KONG_PG_PASSWORD: YWRtaW4xMjM=
+
+hpa:
+  enabled: enabled
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 70

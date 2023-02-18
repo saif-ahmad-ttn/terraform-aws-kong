@@ -1,0 +1,59 @@
+{{- with .Values.deployment }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $.Release.Name }}
+  namespace: {{ $.Release.Namespace  }}
+  {{ if hasKey . "Annotations" }}
+  {{ with .Annotations.deployment }}
+  annotations:
+    {{ toYaml . | nindent 4 }}
+  {{ end }}
+  {{ end}}
+spec:
+  replicas: {{ .replicaCount }}
+  revisionHistoryLimit: {{ $.Values.deployment.revisionHistoryLimit }}
+  selector:
+    matchLabels:
+      {{- include "konga.deploymentSelectorLabels" $ | nindent 6 }}
+  strategy:
+    rollingUpdate:
+      maxSurge: {{ .maxSurge }}
+      maxUnavailable: {{ .maxUnavailable }}
+    type: {{ .type }}
+  template:
+    metadata:
+    {{ if hasKey . "Annotations" }}
+    {{- with .Annotations.pod }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{ end }}
+      labels:
+        {{- include "konga.podSelectorLabels" $ | nindent 8 }}
+    spec:
+      securityContext:
+        runAsUser: {{ .securityContext }}
+      terminationGracePeriodSeconds: {{ .terminationGracePeriodSeconds }}
+      containers:
+        {{- range $containers := .containers }}
+        - name: {{ $containers.name }}
+          image: "{{ $.Values.deployment.repositoryUrl }}"
+          imagePullPolicy: {{ $.Values.deployment.imagePullPolicy }}
+          ports:
+          {{- range $ports := $containers.ports }}
+          - containerPort: {{ $ports.containerPort }}
+            protocol: {{ $ports.protocol }}
+          {{- end }}
+          {{- with $containers.env }}
+          env:
+            {{- include "konga.defaultEnvVars" $ | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- include "konga.healthCheck" $containers | nindent 10 }}
+          {{ with $containers.resources }}
+          resources:
+            {{ toYaml . | nindent 12 }}
+          {{ end }}
+        {{- end  }}
+{{ end }}
